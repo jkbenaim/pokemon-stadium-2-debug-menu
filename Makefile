@@ -1,23 +1,61 @@
-target = usa.bin
+targets := usa.z64 jap.z64
 
-.PHONY: upload-partial
-upload-partial: out.z64
-	64drive -v -c 103 -z 2097152 -l $<
+sources = $(wildcard *.c)
+objects = $(sources:.c=.o)
+CFLAGS=-Os -march=vr4300 -mabi=32 -Wno-multichar -Wall
+CC=mips64-elf-gcc
+LD=mips64-elf-ld
 
-.PHONY: upload-full
-upload-full: out.z64
-	64drive -v -c 103 -l $<
+.PHONY: all
+all: $(targets)
 
 .PHONY: clean
 clean:
-	rm -f out.z64
+	rm -f $(objects) $(targets) usa.o usa.bin jap.o jap.bin patch.usa.o data.usa.o patch.jap.o data.jap.o romjudge bass np3e0.vcdiff np3j0.vcdiff
+	$(MAKE) -C external/bass clean
+	$(MAKE) -C external/romjudge clean
 
-out.z64: patch.asm c/$(target)
-	bass -sym syms.map $<
-	romjudge -f $@
+patch.usa.o: $(sources)
+	$(CC) $(CFLAGS) -DREGION=0 -c -o patch.usa.o patch.c
 
-c/$(target):
-	make -C c $(target)
+data.usa.o: $(sources)
+	$(CC) $(CFLAGS) -DREGION=0 -c -o data.usa.o data.c
 
-patch.vcdiff: out.z64 np3e0.z64
-	xdelta3 -f -s np3e0.z64 out.z64 patch.vcdiff
+usa.o: patch.usa.o data.usa.o
+	$(LD) -o "$@" -T usa.ld $^
+
+usa.bin: usa.o
+	mips64-elf-objcopy -O binary $^ $@
+	
+usa.z64: patch.asm usa.bin bass romjudge
+	./bass -c REGION=0 $<
+	./romjudge -f $@
+
+patch.jap.o: $(sources)
+	$(CC) $(CFLAGS) -DREGION=1 -c -o patch.jap.o patch.c
+
+data.jap.o: $(sources)
+	$(CC) $(CFLAGS) -DREGION=1 -c -o data.jap.o data.c
+
+jap.o: patch.jap.o data.jap.o
+	$(LD) -o "$@" -T jap.ld $^
+
+jap.bin: jap.o
+	mips64-elf-objcopy -O binary $^ $@
+	
+jap.z64: patch.asm jap.bin bass romjudge
+	./bass -c REGION=1 $<
+	./romjudge -f $@
+
+.PHONY: patches
+patches: usa.z64 jap.z64
+	xdelta3 -f -s np3e0.z64 usa.z64 np3e0.vcdiff
+	xdelta3 -f -s np3j0.z64 jap.z64 np3j0.vcdiff
+
+bass:
+	$(MAKE) -C external/bass
+	mv external/bass/bass .
+
+romjudge:
+	$(MAKE) -C external/romjudge
+	mv external/romjudge/romjudge .

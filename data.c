@@ -5,7 +5,7 @@ struct {
 	unsigned int start;
 	unsigned int end;
 } frags[] = {
-#ifdef japanese
+#if REGION == 1
 	{112,0x167040,0x16e4d0},
 	{122,0x1dae70,0x1dcd60},
 	{124,0x1e39e0,0x1e58e0},
@@ -25,7 +25,7 @@ struct {
 	{236,0x42dfe0,0x430f40},
 	{237,0x430f40,0x4335a0},
 	{238,0x166ec0,0x167040},
-#else
+#elif REGION == 0
 //	{0,0x15e8b0,0x165c50},
 //	{1,0x165c50,0x165ec0},
 //	{3,0xf8190,0x10cf70},
